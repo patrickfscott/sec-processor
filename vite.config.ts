@@ -11,6 +11,16 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
       },
+      '/api/sec-data': {
+        target: 'https://data.sec.gov',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sec-data/, ''),
+      },
+      '/api/sec': {
+        target: 'https://www.sec.gov',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/sec/, ''),
+      },
     },
   },
 });

@@ -1,11 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import type { HttpProxy } from 'vite';
 
-const SEC_PROXY_HEADERS = {
-  'User-Agent': 'SECFinExtractor/1.0 (contact@example.com)',
-  'Accept-Encoding': 'identity',
-};
+const DEFAULT_SEC_USER_AGENT = 'SECFinExtractor/1.0 (contact@example.com)';
+
+/** Configure proxy to set a proper User-Agent header on outgoing requests to SEC EDGAR. */
+function configureSECProxy(proxy: HttpProxy.Server) {
+  proxy.on('proxyReq', (proxyReq, req) => {
+    // Read the custom header from the browser request (browsers block setting User-Agent directly)
+    const customUA = req.headers['x-sec-user-agent'];
+    proxyReq.setHeader('User-Agent', (customUA as string) || DEFAULT_SEC_USER_AGENT);
+    // Remove the internal-only custom header from the outgoing request
+    proxyReq.removeHeader('x-sec-user-agent');
+  });
+}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -20,13 +29,13 @@ export default defineConfig({
         target: 'https://data.sec.gov',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/sec-data/, ''),
-        headers: SEC_PROXY_HEADERS,
+        configure: configureSECProxy,
       },
       '/api/sec': {
         target: 'https://www.sec.gov',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/sec/, ''),
-        headers: SEC_PROXY_HEADERS,
+        configure: configureSECProxy,
       },
     },
   },

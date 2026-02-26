@@ -24,7 +24,7 @@ async function secFetch<T>(url: string): Promise<T> {
 
   const response = await fetch(url, {
     headers: {
-      'User-Agent': userAgent,
+      'X-SEC-User-Agent': userAgent,
       Accept: 'application/json',
     },
   });

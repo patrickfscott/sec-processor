@@ -6,10 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api/anthropic': {
-        target: 'https://api.anthropic.com',
+      '/api/anthropic/messages': {
+        target: 'https://api.anthropic.com/v1/messages',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+        rewrite: () => '',
       },
     },
   },

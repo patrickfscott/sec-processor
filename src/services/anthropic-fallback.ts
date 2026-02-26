@@ -1,6 +1,6 @@
 /**
  * Anthropic API fallback for extracting financial data from unstructured filing HTML.
- * Uses Vite dev server proxy to avoid CORS issues.
+ * In dev: uses Vite proxy. In production: uses Vercel serverless function at /api/anthropic/messages.
  */
 import type { ExtractedMetric, FinancialCategory, MetricUnit } from '../types/financial';
 
@@ -31,7 +31,7 @@ export async function extractWithAI(
   const prompt = `You are a financial data extraction system. Extract the exact numerical value for "${conceptLabel}" from the following SEC filing excerpt for the period ${period}. Return ONLY a JSON object: {"value": <number>, "unit": "${unit}", "period": "${period}", "confidence": "high|medium|low"}. If the value is not present, return {"value": null, "confidence": "not_found"}. Do not include any other text.`;
 
   try {
-    const response = await fetch('/api/anthropic/v1/messages', {
+    const response = await fetch('/api/anthropic/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

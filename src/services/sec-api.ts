@@ -30,10 +30,17 @@ async function secFetch<T>(url: string): Promise<T> {
   });
 
   if (!response.ok) {
+    let bodySnippet = '';
+    try {
+      const text = await response.text();
+      bodySnippet = text.slice(0, 200);
+    } catch { /* ignore */ }
     const status = response.statusText
       ? `${response.status} ${response.statusText}`
       : `${response.status}`;
-    throw new Error(`SEC API error: ${status} for ${url}`);
+    throw new Error(
+      `SEC API error: ${status} for ${url}${bodySnippet ? ` — ${bodySnippet}` : ''}`,
+    );
   }
 
   const data = await response.json();

@@ -1,0 +1,38 @@
+{
+  "name": "sec-processor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web app to pull SEC filings and extract structured financial data",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:22729/git/patrickfscott/sec-processor"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "jsdom": "^28.1.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  }
+}

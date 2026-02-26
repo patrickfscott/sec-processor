@@ -1,3 +1,8 @@
 {
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/sec-data/(.*)", "destination": "/api/sec-data/[...path]" },
+    { "source": "/api/sec/(.*)", "destination": "/api/sec/[...path]" },
+    { "source": "/api/anthropic/(.*)", "destination": "/api/anthropic/[...path]" }
+  ]
 }

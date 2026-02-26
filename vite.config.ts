@@ -1,42 +1,77 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import type { ProxyOptions } from 'vite';
-import type { ClientRequest, IncomingMessage } from 'node:http';
+import type { Plugin } from 'vite';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const DEFAULT_SEC_USER_AGENT = 'SECFinExtractor/1.0 (contact@example.com)';
 
-/** Configure proxy to set a proper User-Agent header on outgoing requests to SEC EDGAR. */
-const configureSECProxy: ProxyOptions['configure'] = (proxy) => {
-  proxy.on('proxyReq', (proxyReq: ClientRequest, req: IncomingMessage) => {
-    // Read the custom header from the browser request (browsers block setting User-Agent directly)
-    const customUA = req.headers['x-sec-user-agent'];
-    proxyReq.setHeader('User-Agent', (customUA as string) || DEFAULT_SEC_USER_AGENT);
-    // Remove the internal-only custom header from the outgoing request
-    proxyReq.removeHeader('x-sec-user-agent');
-  });
-};
+/**
+ * Vite plugin that proxies SEC EDGAR requests using Node.js native fetch.
+ * Bypasses Vite's built-in http-proxy to reliably set the User-Agent header
+ * required by SEC's fair access policy.
+ */
+function secProxyPlugin(): Plugin {
+  return {
+    name: 'sec-proxy',
+    configureServer(server) {
+      server.middlewares.use(
+        async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+          const url = req.url;
+          if (!url || !url.startsWith('/api/sec')) {
+            return next();
+          }
+
+          let target: string;
+          let path: string;
+
+          // Check /api/sec-data before /api/sec (longer prefix first)
+          if (url.startsWith('/api/sec-data')) {
+            target = 'https://data.sec.gov';
+            path = url.replace(/^\/api\/sec-data/, '');
+          } else {
+            target = 'https://www.sec.gov';
+            path = url.replace(/^\/api\/sec/, '');
+          }
+
+          const userAgent =
+            (req.headers['x-sec-user-agent'] as string) ||
+            DEFAULT_SEC_USER_AGENT;
+
+          try {
+            const upstream = await fetch(`${target}${path}`, {
+              headers: {
+                'User-Agent': userAgent,
+                Accept: (req.headers['accept'] as string) || 'application/json',
+              },
+            });
+
+            res.statusCode = upstream.status;
+            const contentType = upstream.headers.get('content-type');
+            if (contentType) {
+              res.setHeader('Content-Type', contentType);
+            }
+            const body = Buffer.from(await upstream.arrayBuffer());
+            res.end(body);
+          } catch (err) {
+            console.error('[sec-proxy]', err);
+            res.statusCode = 502;
+            res.end(JSON.stringify({ error: 'Failed to proxy request to SEC' }));
+          }
+        },
+      );
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), secProxyPlugin()],
   server: {
     proxy: {
       '/api/anthropic': {
         target: 'https://api.anthropic.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
-      },
-      '/api/sec-data': {
-        target: 'https://data.sec.gov',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sec-data/, ''),
-        configure: configureSECProxy,
-      },
-      '/api/sec': {
-        target: 'https://www.sec.gov',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sec/, ''),
-        configure: configureSECProxy,
       },
     },
   },

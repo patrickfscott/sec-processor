@@ -45,7 +45,6 @@ function secProxyPlugin(): Plugin {
           const upstream = await fetch(upstreamUrl, {
             headers: {
               'User-Agent': userAgent,
-              'Host': new URL(target).host,
               'Accept': (req.headers['accept'] as string) || 'application/json',
               'Accept-Encoding': 'identity',
             },

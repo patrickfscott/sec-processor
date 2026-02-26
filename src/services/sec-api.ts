@@ -46,7 +46,7 @@ async function loadTickerMap(): Promise<Map<string, { cik: number; name: string 
   if (tickerMap) return tickerMap;
 
   const data = await secFetch<CompanyTickersResponse>(
-    'https://www.sec.gov/files/company_tickers.json',
+    '/api/sec/files/company_tickers.json',
   );
 
   tickerMap = new Map();
@@ -77,7 +77,7 @@ export function padCIK(cik: number): string {
 export async function fetchCompanyFacts(cik: number): Promise<CompanyFactsResponse> {
   const paddedCIK = padCIK(cik);
   return secFetch<CompanyFactsResponse>(
-    `https://data.sec.gov/api/xbrl/companyfacts/CIK${paddedCIK}.json`,
+    `/api/sec-data/api/xbrl/companyfacts/CIK${paddedCIK}.json`,
   );
 }
 
@@ -85,7 +85,7 @@ export async function fetchCompanyFacts(cik: number): Promise<CompanyFactsRespon
 export async function fetchSubmissions(cik: number): Promise<SubmissionsResponse> {
   const paddedCIK = padCIK(cik);
   return secFetch<SubmissionsResponse>(
-    `https://data.sec.gov/submissions/CIK${paddedCIK}.json`,
+    `/api/sec-data/submissions/CIK${paddedCIK}.json`,
   );
 }
 

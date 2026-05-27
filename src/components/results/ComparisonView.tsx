@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CompanyExtractionResult } from '../../types/financial';
 import { formatMetricValue, getValueClass } from '../../utils/format';
 import { XBRL_CONCEPTS } from '../../constants/xbrl-concepts';
@@ -7,6 +8,8 @@ import { ConfidenceIndicator } from './ConfidenceIndicator';
 interface ComparisonViewProps {
   results: CompanyExtractionResult[];
 }
+
+const MAX_COMPARE = 3;
 
 const KEY_METRICS = [
   'revenue', 'net_income', 'eps_diluted', 'operating_cash_flow',
@@ -25,29 +28,82 @@ const TICKER_COLORS = [
 ];
 
 export function ComparisonView({ results }: ComparisonViewProps) {
-  if (results.length < 2) return null;
-
-  // Find the most recent period common to all companies
-  const allPeriodSets = results.map((r) => new Set(r.periods.map((p) => p.period)));
-  const commonPeriods = [...allPeriodSets[0]].filter((p) =>
-    allPeriodSets.every((s) => s.has(p)),
+  const [selectedTickers, setSelectedTickers] = useState<string[]>(() =>
+    results.slice(0, MAX_COMPARE).map((r) => r.ticker),
   );
 
+  if (results.length < 2) return null;
+
+  const validSelected = selectedTickers.filter((t) => results.some((r) => r.ticker === t));
+  const activeTickers = validSelected.length > 0
+    ? validSelected
+    : results.slice(0, MAX_COMPARE).map((r) => r.ticker);
+
+  const toggleTicker = (ticker: string) => {
+    setSelectedTickers((prev) => {
+      const current = prev.filter((t) => results.some((r) => r.ticker === t));
+      if (current.includes(ticker)) {
+        return current.length === 1 ? current : current.filter((t) => t !== ticker);
+      }
+      if (current.length >= MAX_COMPARE) return current;
+      return [...current, ticker];
+    });
+  };
+
+  const displayed = activeTickers
+    .map((t) => results.find((r) => r.ticker === t))
+    .filter((r): r is CompanyExtractionResult => r !== undefined);
+
+  // Find the most recent period common to all selected companies
+  const allPeriodSets = displayed.map((r) => new Set(r.periods.map((p) => p.period)));
+  const commonPeriods = allPeriodSets.length > 0
+    ? [...allPeriodSets[0]].filter((p) => allPeriodSets.every((s) => s.has(p)))
+    : [];
+
   const recentPeriod = commonPeriods.sort().pop();
-  if (!recentPeriod) {
-    return (
-      <div className="text-center py-4 text-gray-500 text-sm">
-        No common reporting periods found for comparison.
-      </div>
-    );
-  }
 
   const allConcepts = [...XBRL_CONCEPTS, ...CALCULATED_METRICS.map((m) => ({
     id: m.id, label: m.label, category: m.category, unit: m.unit,
   }))];
 
+  const showSelector = results.length > MAX_COMPARE;
+  const selectedCount = activeTickers.length;
+
   return (
     <div className="overflow-x-auto">
+      {showSelector && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-gray-400">
+            Select up to {MAX_COMPARE} ({selectedCount}/{MAX_COMPARE}):
+          </span>
+          {results.map((r, i) => {
+            const isSelected = activeTickers.includes(r.ticker);
+            const atLimit = selectedCount >= MAX_COMPARE && !isSelected;
+            const color = TICKER_COLORS[i % TICKER_COLORS.length];
+            return (
+              <button
+                key={r.ticker}
+                type="button"
+                onClick={() => toggleTicker(r.ticker)}
+                disabled={atLimit}
+                className={`px-2 py-1 text-[11px] font-mono rounded border transition-colors ${
+                  isSelected
+                    ? `${color} ${color.replace('text-', 'border-')} bg-terminal-highlight/40`
+                    : 'text-gray-500 border-terminal-border hover:text-gray-300'
+                } ${atLimit ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                {r.ticker}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!recentPeriod ? (
+        <div className="text-center py-4 text-gray-500 text-sm">
+          No common reporting periods found for comparison.
+        </div>
+      ) : (
+      <>
       <div className="mb-3 text-xs text-gray-400">
         Comparing for period: <span className="font-mono text-gray-200">{recentPeriod}</span>
       </div>
@@ -57,7 +113,7 @@ export function ComparisonView({ results }: ComparisonViewProps) {
             <th className="py-2 px-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider min-w-[180px]">
               Metric
             </th>
-            {results.map((r, i) => (
+            {displayed.map((r, i) => (
               <th
                 key={r.ticker}
                 className={`py-2 px-3 text-right text-[10px] font-semibold uppercase tracking-wider min-w-[130px] ${TICKER_COLORS[i % TICKER_COLORS.length]}`}
@@ -80,7 +136,7 @@ export function ComparisonView({ results }: ComparisonViewProps) {
                 <td className="py-1.5 px-3 text-xs text-gray-300">
                   {concept.label}
                 </td>
-                {results.map((r) => {
+                {displayed.map((r) => {
                   const periodData = r.periods.find((p) => p.period === recentPeriod);
                   const metric = periodData?.metrics.get(metricId);
                   const value = metric?.value ?? null;
@@ -106,6 +162,8 @@ export function ComparisonView({ results }: ComparisonViewProps) {
           })}
         </tbody>
       </table>
+      </>
+      )}
     </div>
   );
 }
